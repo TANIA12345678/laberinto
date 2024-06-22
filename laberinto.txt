@@ -1,0 +1,257 @@
+#include <iostream>
+#include <vector>
+#include <stack>
+#include <cstdlib>
+#include <ctime>
+#include <chrono>
+
+using namespace std;
+using namespace std::chrono;
+
+// Estructura que representa una celda del laberinto
+struct Cell {
+    bool visited;       // Si la celda ha sido visitada
+    bool top_wall;      // Si la celda tiene pared superior
+    bool bottom_wall;   // Si la celda tiene pared inferior
+    bool left_wall;     // Si la celda tiene pared izquierda
+    bool right_wall;    // Si la celda tiene pared derecha
+    bool path;          // Si la celda es parte del camino solucionado
+
+    // Constructor por defecto de la celda
+    Cell() {
+        visited = false;         // Inicialmente no visitada
+        top_wall = true;         // Con todas las paredes
+        bottom_wall = true;
+        left_wall = true;
+        right_wall = true;
+        path = false;            // Inicialmente no es parte del camino
+    }
+};
+
+// Clase que representa el laberinto
+class Maze {
+public:
+    Maze(int width, int height);  // Constructor del laberinto
+    void generateMaze();          // Función para generar el laberinto
+    void printMaze();             // Función para imprimir el laberinto
+    bool solveMaze();             // Función para resolver el laberinto
+    void printSolvedMaze();       // Función para imprimir el laberinto solucionado
+
+private:
+    int width, height;            // Ancho y alto del laberinto
+    vector<vector<Cell>> maze;    // Matriz de celdas del laberinto
+    bool isValidMove(int x, int y);  // Verifica si un movimiento es válido
+    void removeWall(int x1, int y1, int x2, int y2);  // Remueve la pared entre dos celdas
+    bool backtrackSolve(int x, int y);  // Resuelve el laberinto usando retroceso
+};
+
+// Constructor del laberinto
+Maze::Maze(int width, int height) : width(width), height(height) {
+    maze.resize(height, vector<Cell>(width));  // Redimensiona la matriz de celdas
+}
+
+// Función para generar el laberinto
+void Maze::generateMaze() {
+    stack<pair<int, int>> stack;  // Pila para realizar DFS
+    srand(time(0));  // Inicializa la semilla para generación aleatoria
+
+    int startX = 0, startY = 0;  // Punto de inicio del laberinto
+    maze[startY][startX].visited = true;  // Marca la celda inicial como visitada
+    stack.push({ startX, startY });  // Añade la celda inicial a la pila
+
+    while (!stack.empty()) {
+        int x = stack.top().first;
+        int y = stack.top().second;
+        stack.pop();
+
+        vector<pair<int, int>> neighbors;  // Vector de vecinos no visitados
+
+        if (isValidMove(x, y - 1)) neighbors.push_back({ x, y - 1 }); // Arriba
+        if (isValidMove(x, y + 1)) neighbors.push_back({ x, y + 1 }); // Abajo
+        if (isValidMove(x - 1, y)) neighbors.push_back({ x - 1, y }); // Izquierda
+        if (isValidMove(x + 1, y)) neighbors.push_back({ x + 1, y }); // Derecha
+
+        if (!neighbors.empty()) {
+            stack.push({ x, y });
+            pair<int, int> next = neighbors[rand() % neighbors.size()];  // Elige un vecino al azar
+
+            removeWall(x, y, next.first, next.second);  // Remueve la pared entre las celdas
+            maze[next.second][next.first].visited = true;  // Marca la celda como visitada
+            stack.push(next);  // Añade el vecino a la pila
+        }
+    }
+}
+
+// Verifica si un movimiento es válido
+bool Maze::isValidMove(int x, int y) {
+    return x >= 0 && x < width && y >= 0 && y < height && !maze[y][x].visited;
+}
+
+// Remueve la pared entre dos celdas
+void Maze::removeWall(int x1, int y1, int x2, int y2) {
+    if (x1 == x2) {
+        if (y1 > y2) {
+            maze[y1][x1].top_wall = false;
+            maze[y2][x2].bottom_wall = false;
+        }
+        else {
+            maze[y1][x1].bottom_wall = false;
+            maze[y2][x2].top_wall = false;
+        }
+    }
+    else {
+        if (x1 > x2) {
+            maze[y1][x1].left_wall = false;
+            maze[y2][x2].right_wall = false;
+        }
+        else {
+            maze[y1][x1].right_wall = false;
+            maze[y2][x2].left_wall = false;
+        }
+    }
+}
+
+// Función para imprimir el laberinto
+void Maze::printMaze() {
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            if (x == 0 && y == 0) {
+                cout << "# "; // Punto de entrada
+            }
+            else {
+                cout << (maze[y][x].top_wall ? "||" : "| ");
+            }
+        }
+        cout << "|" << endl;
+
+        for (int x = 0; x < width; ++x) {
+            if (x == 0 && y == 0) {
+                cout << "  "; // Espacio para la entrada
+            }
+            else {
+                cout << (maze[y][x].left_wall ? "|" : " ");
+                cout << " ";
+            }
+        }
+        cout << "|" << endl;
+    }
+
+    // Imprimir la última línea con la salida
+    for (int x = 0; x < width; ++x) {
+        if (x == width - 1) {
+            cout << " +"; // Marcar la salida
+        }
+        else {
+            cout << "||";
+        }
+    }
+    cout << endl; // No hay necesidad de añadir el "|" al final
+}
+
+// Función para imprimir el laberinto solucionado
+void Maze::printSolvedMaze() {
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            if (x == 0 && y == 0) {
+                cout << "# "; // Punto de entrada
+            }
+            else {
+                cout << (maze[y][x].top_wall ? "||" : "| ");
+            }
+        }
+        cout << "|" << endl;
+
+        for (int x = 0; x < width; ++x) {
+            if (x == 0 && y == 0) {
+                cout << "  "; // Espacio para la entrada
+            }
+            else if (x == width - 1 && y == height - 1) {
+                cout << " *"; // Punto de salida
+            }
+            else {
+                cout << (maze[y][x].left_wall ? "|" : " ");
+                cout << (maze[y][x].path ? "*" : " ");
+            }
+        }
+        cout << "|" << endl;
+    }
+
+    // Imprimir la última línea con la salida
+    for (int x = 0; x < width; ++x) {
+        if (x == width - 1) {
+            cout << " +"; // Marcar la salida
+        }
+        else {
+            cout << "||";
+        }
+    }
+    cout << endl; // No hay necesidad de añadir el "|" al final
+}
+
+// Función para resolver el laberinto
+bool Maze::solveMaze() {
+    // Reiniciar flags de visitado para resolver
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            maze[y][x].visited = false;
+        }
+    }
+    return backtrackSolve(0, 0);  // Inicia el retroceso desde la celda (0,0)
+}
+
+// Función de retroceso para resolver el laberinto
+bool Maze::backtrackSolve(int x, int y) {
+    if (x == width - 1 && y == height - 1) {  // Si se llega a la salida
+        maze[y][x].path = true;  // Marca la celda como parte del camino
+        return true;
+    }
+
+    if (x < 0 || x >= width || y < 0 || y >= height || maze[y][x].visited) {  // Si el movimiento es inválido
+        return false;
+    }
+
+    maze[y][x].visited = true;  // Marca la celda como visitada
+    maze[y][x].path = true;  // Marca la celda como parte del camino
+
+    // Prueba de mover en las cuatro direcciones
+    if (!maze[y][x].top_wall && backtrackSolve(x, y - 1)) return true;  // Arriba
+    if (!maze[y][x].right_wall && backtrackSolve(x + 1, y)) return true;  // Derecha
+    if (!maze[y][x].bottom_wall && backtrackSolve(x, y + 1)) return true;  // Abajo
+    if (!maze[y][x].left_wall && backtrackSolve(x - 1, y)) return true;  // Izquierda
+
+    maze[y][x].path = false;  // Desmarca la celda si no es parte del camino correcto
+    return false;
+}
+
+// Función principal
+int main() {
+    int width, height;
+    cout << "Enter the width of the maze: ";
+    cin >> width;
+    cout << "Enter the height of the maze: ";
+    cin >> height;
+
+    Maze maze(width, height);  // Crea un laberinto de las dimensiones dadas
+
+    auto start = high_resolution_clock::now();  // Inicia el cronómetro
+    maze.generateMaze();  // Genera el laberinto
+    auto stop = high_resolution_clock::now();  // Detiene el cronómetro
+    auto generation_duration = duration_cast<milliseconds>(stop - start);  // Calcula la duración
+    cout << "Maze generated in " << generation_duration.count() << " ms" << endl;
+
+    maze.printMaze();  // Imprime el laberinto generado
+
+    start = high_resolution_clock::now();  // Inicia el cronómetro
+    if (maze.solveMaze()) {  // Si se encuentra una solución
+        stop = high_resolution_clock::now();  // Detiene el cronómetro
+        auto solve_duration = duration_cast<milliseconds>(stop - start);  // Calcula la duración
+        cout << "Maze solved in " << solve_duration.count() << " ms" << endl;
+        cout << "Solved maze:" << endl;
+        maze.printSolvedMaze();  // Imprime el laberinto solucionado
+    }
+    else {
+        cout << "No solution found." << endl;
+    }
+
+    return 0;
+}
